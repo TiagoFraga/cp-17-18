@@ -81,17 +81,17 @@
 %---------------------------------------------------------------------------
 
 \title{
-       	    Cálculo de Programas
+            Cálculo de Programas
 \\
-       	Trabalho Prático
+        Trabalho Prático
 \\
-       	MiEI+LCC --- 2017/18
+        MiEI+LCC --- 2017/18
 }
 
 \author{
-       	\dium
+        \dium
 \\
-       	Universidade do Minho
+        Universidade do Minho
 }
 
 
@@ -107,11 +107,11 @@
 \begin{tabular}{ll}
 \textbf{Grupo} nr. & 99 (preencher)
 \\\hline
-a11111 & Nome1 (preencher)	
+a11111 & Nome1 (preencher)  
 \\
-a22222 & Nome2 (preencher)	
+a22222 & Nome2 (preencher)  
 \\
-a33333 & Nome3 (preencher)	
+a33333 & Nome3 (preencher)  
 \end{tabular}
 \end{center}
 
@@ -625,15 +625,15 @@ teste2a = outlineQTree (==0) qt == qtOut
 \section*{Problema 3}
 O cálculo das combinações de |n| |k|-a-|k|,
 \begin{eqnarray}
-	|bin n k = frac (fac n)(fac k * (fac ((n-k))))|
-	\label{eq:bin} 
+  |bin n k = frac (fac n)(fac k * (fac ((n-k))))|
+  \label{eq:bin} 
 \end{eqnarray}
 envolve três factoriais. Recorrendo à \material{lei de recursividade múltipla} do cálculo
 de programas, é possível escrever o mesmo programa como um simples ciclo-for
 onde se fazem apenas multiplicações e somas. Para isso, começa-se por estruturar
 a definição dada da forma seguinte,
 \begin{eqnarray*}
-	|bin n k = h k (n - k)|
+  |bin n k = h k (n - k)|
 \end{eqnarray*}
 onde
 \begin{eqnarray*}
@@ -673,7 +673,7 @@ derive as funções |base k| e |loop| que são usadas como auxiliares acima.
 \begin{propriedade}
 Verificação que |bin n k| coincide com a sua especificação (\ref{eq:bin}):
 \begin{code}
-prop3 n k = (bin n k) == (fac n) % (fac k * (fac ((n-k))))
+prop3 (NonNegative n) (NonNegative k) = k <= n ==> (bin n k) == (fac n) % (fac k * (fac ((n-k))))
 \end{code}
 \end{propriedade}
 
@@ -785,7 +785,7 @@ marbleWeights = fmap marbleWeight bagOfMarbles
 \end{code}
 onde |bagOfMarbles| é o saco de berlindes referido acima, obtendo-se:
 \begin{quote}\small
-	\verb!{ 2 |-> 3 , 3 |-> 5 , 6 |-> 2 }!.
+  \verb!{ 2 |-> 3 , 3 |-> 5 , 6 |-> 2 }!.
 \end{quote}
 %
 Mais ainda, se quisermos saber o total de berlindes em |bagOfMarbles| basta
@@ -828,10 +828,10 @@ instance Monad Bag where
    return = singletonbag
 \end{code}
 \begin{enumerate}
-\item	
+\item 
 Defina a função |muB| (multiplicação do mónade |Bag|) e a função auxiliar
 |singletonbag|.
-\item	Verifique-as com os seguintes testes unitários:
+\item Verifique-as com os seguintes testes unitários:
 %if False
 \begin{code}
 muB :: Bag (Bag a) -> Bag a
@@ -874,8 +874,8 @@ efeitos especiais em progra\-mação. Por exemplo, a biblioteca \Probability\
 oferece um mónade para abordar problemas de probabilidades. Nesta biblioteca,
 o conceito de distribuição estatística é captado pelo tipo
 \begin{eqnarray}
-	|newtype Dist a = D {unD :: [(a, ProbRep)]}|
-	\label{eq:Dist}
+  |newtype Dist a = D {unD :: [(a, ProbRep)]}|
+  \label{eq:Dist}
 \end{eqnarray}
 em que |ProbRep| é um real de |0| a |1|, equivalente a uma escala de |0| a |100%|.
 
@@ -974,62 +974,170 @@ outras funções auxiliares que sejam necessárias.
 \subsection*{Problema 1}
 
 \begin{code}
-inBlockchain = undefined
-outBlockchain = undefined
-recBlockchain = undefined    
-cataBlockchain = undefined     
-anaBlockchain = undefined
-hyloBlockchain = undefined
+inBlockchain = either Bc Bcs
 
-allTransactions = undefined
-ledger = undefined
-isValidMagicNr = undefined
+outBlockchain (Bc b1) = Left (b1)
+outBlockchain (Bcs (b1,b2)) = Right (b1,b2)
+
+recBlockchain g = id -|- (id >< g) 
+
+cataBlockchain g = g . (recBlockchain (cataBlockchain g)) . outBlockchain 
+
+anaBlockchain g = inBlockchain . (recBlockchain (anaBlockchain g) ) . g
+
+hyloBlockchain h g = cataBlockchain h . anaBlockchain g
+
+
+allTransactions = cataBlockchain ( either (p2.p2) (uncurry (++) . (p2.p2 >< id)) )
+
+ledger = cataList (either nil une) . allTransactions
+        where une ((e1,(v,e2)),t) = (e1,-v):(e2,v):t
+
+isValidMagicNr = not . (any (uncurry elem)) . (anaList ( (id -|- (split id p2) ) . outList)) . cataBlockchain (either ( (:[]).p1) (cons.(p1><id)) )
+
+--listMagicNo :: Blockchain -> [MagicNo]
+--listMagicNo = cataBlockchain (either ( (:[]).p1) (cons.(p1><id)) )
+
+
 \end{code}
-
-
 \subsection*{Problema 2}
 
 \begin{code}
-inQTree = undefined
-outQTree = undefined
-baseQTree = undefined
-recQTree = undefined
-cataQTree = undefined
-anaQTree = undefined
-hyloQTree = undefined
+inQTree = either (uncurry (uncurry . Cell)) (uncurry (uncurry.(curry (uncurry . (uncurry Block)))))
+
+outQTree (Cell a b c) = Left (a,(b,c))
+outQTree (Block a b c d) = Right (a,(b,(c,d)))
+
+baseQTree f g = (f >< id) -|- (g >< (g >< (g >< g) ) )
+
+recQTree f = baseQTree id f
+
+cataQTree g = g . (recQTree (cataQTree g)) . outQTree 
+
+anaQTree g = inQTree . (recQTree (anaQTree g) ) . g
+
+hyloQTree h g = cataQTree h . anaQTree g
 
 instance Functor QTree where
-    fmap = undefined
+    fmap f = cataQTree ( inQTree . baseQTree f id )
 
-rotateQTree = undefined
-scaleQTree = undefined
-invertQTree = undefined
+
+rotateQTree = cataQTree (either rodaCell rodaBlock) where
+    rodaCell (n,(b,c)) = Cell n c b
+    rodaBlock (a,(b,(c,d))) = Block c a d b
+
+--rodaCell :: (a, (Int, Int)) -> QTree a
+--rodaBlock :: (QTree a, (QTree a, (QTree a, QTree a))) -> QTree a
+
+scaleQTree n = cataQTree (either (scaleCell n) (scaleBlock n)) where
+    scaleCell n (a,(b,c)) = Cell a (n*b) (n*c)
+    scaleBlock n (a,(b,(c,d))) = Block a b c d
+
+--scaleQTree n = cataQTree ( inQTree.((id >< ((n*) >< (n*))) + id) )
+
+--scaleCell :: Int -> (a, (Int, Int)) -> QTree a
+--scaleBlock :: Int -> (QTree a, (QTree a, (QTree a, QTree a))) -> QTree a
+
+--invertQTree = cataQTree (either invertCell invertBlock )
+
+--invertCell :: (PixelRGBA8,(Int,Int)) -> QTree PixelRGBA8
+--invertCell ((PixelRGBA8 r g b a),(x,y)) = Cell (PixelRGBA8 (255-r) (255-g) (255-b) a) x y
+
+--invertBlock :: (QTree PixelRGBA8, (QTree PixelRGBA8, (QTree PixelRGBA8, QTree PixelRGBA8))) -> QTree PixelRGBA8
+--invertBlock (a,(b,(c,d))) = Block a b c d 
+
+invertQTree = fmap g where g (PixelRGBA8 r g b a) = (PixelRGBA8 (255-r) (255-g) (255-b) a)
+
 compressQTree = undefined
+
 outlineQTree = undefined
+
 \end{code}
 
 \subsection*{Problema 3}
 
 \begin{code}
-base = undefined
-loop = undefined
+base = destSplit (const 1) (succ) (const 1) (const 1)  
+loop = destSplit (mul.(split pr1 pr2)) (succ.pr2) (mul.(split pr3 pr4)) (succ.pr4)
+
+--destSplit :: (a -> b) -> (a -> c) -> (a -> d)-> (a -> e) -> a -> (b,c,d,e)
+destSplit f g h k x = (f x, g x, h x, k x)
+
+pr1 (a,b,c,d) = a
+pr2 (a,b,c,d) = b
+pr3 (a,b,c,d) = c
+pr4 (a,b,c,d) = d
 \end{code}
+
+Resolução do exercício 3 :
+ 
+\begin{eqnarray*}
+%
+\start
+%
+  |lcbr (f k 0 = 1) (f k (d+1) = (d +k + 1)*f k d)|
+  |lcbr (l k 0 = k + 1) (l k (d+1) = l k d + 1)|
+
+  |lcbr (g 0 = 1) (g (d+1) = (d+1)*g d)|
+  |lcbr (s 0 = 1) (s (d+1) = s d + 1)|
+
+Agora, começamos por tratar da primeira equação:
+
+%
+\just\equiv{ Lei 73;74; (d+k+1) = l k d }
+%
+    |lcbr (f k.zero = one) (f k.succ = l k.f k)|
+%
+\just\equiv{ Lei Eq+ }
+%
+    |either (f k.zero) (f k.succ) = either (zero) (l k.f k)|
+%
+\just\equiv{ Lei Fusão+; Absorção+; def in=[zero,succ] }
+%
+    |f k . in = (either zero (l k)) . (id + f k) |
+%
+\just\equiv{ Lei 73;74; (d+1) = s d }
+%
+    |lcbr (l k.zero = succ.k) (l k.succ = l k.succ)|
+%
+\just\equiv{ Lei Eq+ }
+%
+    |either (l k.zero) (l k.succ) = either (succ.k) (l k.succ)|
+%
+\just\equiv{ Lei Fusão+; Absorção+; def in=[zero,succ] }
+%
+    |l k.in = either (succ.k) (succ) . (id + l k)|
+%
+\qed
+\end{eqnarray*}
 
 \subsection*{Problema 4}
 
 \begin{code}
-inFTree = undefined
-outFTree = undefined
-baseFTree = undefined
-recFTree = undefined
-cataFTree = undefined
-anaFTree = undefined
-hyloFTree = undefined
+inFTree = either Unit (uncurry (uncurry . Comp))
+
+outFTree (Unit b) = Left (b)
+outFTree (Comp a t1 t2 ) =  Right (a, (t1, t2))
+
+baseFTree f g h  = g -|- (f  >< (h >< h))
+
+recFTree f = baseFTree id id f
+
+cataFTree g = g . (recFTree (cataFTree g)) . outFTree
+
+anaFTree g = inFTree . (recFTree (anaFTree g) ) . g
+
+hyloFTree h g = cataFTree h . anaFTree g
 
 instance Bifunctor FTree where
-    bimap = undefined
+    bimap f g = cataFTree ( inFTree . baseFTree f g id )    
 
-generatePTree = undefined
+
+generatePTree = anaFTree aux1 where 
+    aux1 0 = i1 (1)
+    aux1 n = i2 (0.5,(n-1,n-1))
+
+--drawPTree :: PTree -> [Picture]
 drawPTree = undefined
 \end{code}
 
@@ -1045,23 +1153,23 @@ dist = undefined
 Estudar o texto fonte deste trabalho para obter o efeito:\footnote{Exemplos tirados de \cite{Ol18}.} 
 \begin{eqnarray*}
 \start
-	|id = split f g|
+  |id = split f g|
 %
 \just\equiv{ universal property }
 %
         |lcbr(
-		p1 . id = f
-	)(
-		p2 . id = g
-	)|
+    p1 . id = f
+  )(
+    p2 . id = g
+  )|
 %
 \just\equiv{ identity }
 %
         |lcbr(
-		p1 = f
-	)(
-		p2 = g
-	)|
+    p1 = f
+  )(
+    p2 = g
+  )|
 \qed
 \end{eqnarray*}
 
@@ -1369,4 +1477,3 @@ isBalancedFTree = isJust . cataFTree (either (const (Just 0)) g)
 %----------------- Fim do documento -------------------------------------------%
 
 \end{document}
-
